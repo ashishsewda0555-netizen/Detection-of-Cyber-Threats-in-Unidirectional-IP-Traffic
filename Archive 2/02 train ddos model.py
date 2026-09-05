@@ -51,10 +51,15 @@ def quick_eda(df):
 def drop_correlated(corr, threshold=CORRELATION_DROP_THRESHOLD):
     to_drop = set()
     cols = corr.columns
+    # PROTECTED_FEATURES must never be dropped, even if highly correlated
+    protected_features = {"unique_src_count", "src_ip_entropy", "syn_flag_sum"}
+    
     for i in range(len(cols)):
         for j in range(i + 1, len(cols)):
             if abs(corr.iloc[i, j]) > threshold:
-                to_drop.add(cols[j])  
+                if cols[j] not in protected_features:
+                    to_drop.add(cols[j])  
+    
     kept = [c for c in FEATURE_COLUMNS if c not in to_drop]
     if to_drop:
         print(f"\nDropping highly correlated features: {to_drop}")

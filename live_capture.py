@@ -40,7 +40,10 @@ INTERFACE = os.getenv("SNIFFER_INTERFACE", "Ethernet 3")
 API_HOST = os.getenv("API_HOST", "127.0.0.1")
 API_PORT = os.getenv("API_PORT", "8000")
 
-API_SCORE_URL = f"http://{API_HOST}:{API_PORT}/api/score"
+# Windows fix: Clients cannot connect to meta-address 0.0.0.0 directly.
+_client_host = "127.0.0.1" if API_HOST == "0.0.0.0" else API_HOST
+API_SCORE_URL = f"http://{_client_host}:{API_PORT}/api/score"
+API_HEALTH_URL = f"http://{_client_host}:{API_PORT}/api/health"
 
 
 def extract_features(packets: list, victim_ip: str) -> dict:
@@ -144,9 +147,7 @@ def main():
 
     # Verify API is reachable before starting capture loop
     try:
-        health = requests.get(
-            f"http://{API_HOST}:{API_PORT}/api/health", timeout=3
-        )
+        health = requests.get(API_HEALTH_URL, timeout=3)
         if health.status_code == 200:
             print(f"   ✅ API server is online: {health.json()}\n")
         else:

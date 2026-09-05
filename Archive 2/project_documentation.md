@@ -34,7 +34,7 @@
 14. [Phase 3 Updates: Architecture Reform (Disk I/O Elimination)](#14-phase-3-updates-architecture-reform-disk-io-elimination)
 15. [Capture-Logging Discipline](#15-capture-logging-discipline)
 16. [Technical Differentiator: Dual-Engine + SHAP/Z-Score Explainability](#16-technical-differentiator-dual-engine--shapz-score-explainability)
-
+17. [Air-Gap Stress Test & ML Overfitting Reforms](#17-air-gap-stress-test--ml-overfitting-reforms)
 
 ---
 
