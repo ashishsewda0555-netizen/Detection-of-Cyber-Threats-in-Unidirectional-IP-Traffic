@@ -139,8 +139,7 @@ async def lifespan(app: FastAPI):
     """Load the ML model once at startup, before any requests are served."""
     logger.info("Loading scorer module (model + SHAP explainer)...")
     # Import scorer at startup — this triggers model loading and SHAP init
-    # which are the expensive operations (done once, not per-request).
-    from scorer import score_window  # noqa: F401
+    from backend.scorer import score_window  # noqa: F401
     logger.info("Scorer loaded successfully. API is ready.")
     yield
     logger.info("Shutting down API server.")
@@ -190,9 +189,8 @@ async def score_feature_window(request: Request) -> dict[str, Any]:
         "Dst_IP": "192.168.100.2",
         "Window_Start": "2026-09-05T12:00:00+00:00",
         "unique_dst_ports": 3
-    }
     """
-    from scorer import score_window
+    from backend.scorer import score_window
 
     features = await request.json()
 

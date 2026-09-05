@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import shap
 
-MODEL_PATH = "ddos_dual_engine_model.joblib"
+MODEL_PATH = "backend/ddos_dual_engine_model.joblib"
 CLASSIFIER_CONFIDENCE_THRESHOLD = 0.5
 ANOMALY_SCORE_THRESHOLD = 0.55
 

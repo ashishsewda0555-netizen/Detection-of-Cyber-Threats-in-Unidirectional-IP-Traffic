@@ -95,7 +95,7 @@ function AuxiliaryView({ activeSection, setActiveSection, connected, packets, th
 // ── Main Home component ──
 
 export default function Home() {
-  const [streamMode, setStreamMode] = useState<"demo" | "sse" | "stress">("stress");
+  const [streamMode, setStreamMode] = useState<"demo" | "sse" | "stress">("sse");
   const [paused, setPaused] = useState(false);
   const [selectedPacket, setSelectedPacket] = useState<TrafficPacket | null>(null);
   const [activeSection, setActiveSection] = useState("Overview");
@@ -227,7 +227,7 @@ export default function Home() {
       label: formatTime(latest.timestamp).slice(3, 8),
       normal: latest.classification === "Normal" ? 42 + Math.round(Math.random() * 20) : 31 + Math.round(Math.random() * 12),
       anomalous: latest.classification === "Threat"
-        ? Math.round((latest.anomaly_score ?? 0.5) * 20) + 5
+        ? (latest.evidence?.syn_flag_sum ?? latest.evidence?.unique_src_count ?? Math.round((latest.anomaly_score ?? 0.5) * 20) + 5)
         : 2 + Math.round(Math.random() * 4),
     }]);
   }, [streamMode, packets.length]);
@@ -240,7 +240,7 @@ export default function Home() {
       type: "line", data: { labels: chartPoints.map(point => point.label), datasets: [
         { label: "Normal traffic", data: chartPoints.map(point => point.normal), borderColor: "#c7f36b", backgroundColor: "rgba(199,243,107,.09)", fill: true, tension: .42, pointRadius: 0, borderWidth: 2 },
         { label: "Anomalous traffic", data: chartPoints.map(point => point.anomalous), borderColor: "#ff6b61", backgroundColor: "rgba(255,107,97,.07)", fill: true, tension: .42, pointRadius: 0, borderWidth: 2 },
-      ] }, options: { responsive: true, maintainAspectRatio: false, animation: { duration: 250 }, plugins: { legend: { display: false }, tooltip: { backgroundColor: "#111715", borderColor: "#303b35", borderWidth: 1, titleColor: "#d7e0d9", bodyColor: "#9baa9d", displayColors: true } }, scales: { x: { grid: { color: "rgba(145,163,151,.09)" }, ticks: { color: "#6c7a70", font: { family: "IBM Plex Mono", size: 10 }, maxTicksLimit: 6 } }, y: { min: 0, max: 80, grid: { color: "rgba(145,163,151,.09)" }, ticks: { color: "#6c7a70", font: { family: "IBM Plex Mono", size: 10 } } } } }
+      ] }, options: { responsive: true, maintainAspectRatio: false, animation: { duration: 250 }, plugins: { legend: { display: false }, tooltip: { backgroundColor: "#111715", borderColor: "#303b35", borderWidth: 1, titleColor: "#d7e0d9", bodyColor: "#9baa9d", displayColors: true } }, scales: { x: { grid: { color: "rgba(145,163,151,.09)" }, ticks: { color: "#6c7a70", font: { family: "IBM Plex Mono", size: 10 }, maxTicksLimit: 6 } }, y: { min: 0, suggestedMax: 80, grid: { color: "rgba(145,163,151,.09)" }, ticks: { color: "#6c7a70", font: { family: "IBM Plex Mono", size: 10 } } } } }
     });
     return () => chartInstance.current?.destroy();
   }, [chartPoints]);

@@ -37,7 +37,7 @@ def analyze(row: dict) -> dict:
     return {**row, "target_port": int(row["target_port"]), "packet_size": int(row["packet_size"]), "payload_entropy": float(row["payload_entropy"]), "ttl": int(row.get("ttl", 64)), "label": int(is_threat), "classification": "Threat" if is_threat else "Normal", "threat_type": classification, "confidence": confidence, "severity": "critical" if classification == "Volumetric DoS" else ("warning" if classification == "Reconnaissance" else "normal")}
 
 @app.get("/health")
-def health(): return {"status": "ok", "mode": "playback", "model_loaded": MODEL_BUNDLE is not None, "records": len(rows()) if DATA_PATH.exists() else 0, "cadence_seconds": 1}
+def health(): return {"status": "ok", "mode": "playback", "model_loaded": MODEL_BUNDLE is not None, "stats": {"total_windows": len(rows()) if DATA_PATH.exists() else 0}, "cadence_seconds": 1}
 
 @app.post("/analyze")
 def analyze_packet(packet: Packet): return analyze({**packet.model_dump(), "timestamp": datetime.now(timezone.utc).isoformat(), "destination_ip": "10.0.0.10", "tcp_flags": "ACK", "ttl": 64, "mac_address": "02:42:ac:11:00:10", "attack_classification": "Normal"})

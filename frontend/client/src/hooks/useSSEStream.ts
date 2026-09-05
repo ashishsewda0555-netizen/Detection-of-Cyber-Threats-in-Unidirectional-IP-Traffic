@@ -68,6 +68,7 @@ export interface HealthStatus {
 
 const THREAT_LABEL_MAP: Record<string, string> = {
   ddos_syn_flood: "SYN Flood DDoS",
+  ddos_spoofed_syn_flood: "SYN Flood DDoS",
   ddos_unknown_variant: "Unknown DDoS Variant",
   port_scan: "Port Scan",
   benign: "Clean flow",
@@ -86,8 +87,8 @@ function mapSeverity(
  * Fields that don't exist on the verdict are given sensible defaults so
  * every downstream component renders without null-checks.
  */
-function verdictToPacket(v: PipelineVerdict): TrafficPacket {
-  const isAlert = v.is_alert ?? false;
+function verdictToPacket(v: PipelineVerdict & { classification?: string }): TrafficPacket {
+  const isAlert = v.is_alert ?? (v.classification === "Threat") ?? false;
   const rawConf = v.confidence ?? v.classifier_probability ?? 0;
   // Pipeline confidence is 0-1; frontend expects 0-100
   const confidence =
