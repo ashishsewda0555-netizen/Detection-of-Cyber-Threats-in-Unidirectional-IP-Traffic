@@ -67,6 +67,7 @@ export interface HealthStatus {
 // ── Helpers ────────────────────────────────────────────────────────────
 
 const THREAT_LABEL_MAP: Record<string, string> = {
+  ddos_spoofed_syn_flood: "SYN Flood DDoS",
   ddos_syn_flood: "SYN Flood DDoS",
   ddos_unknown_variant: "Unknown DDoS Variant",
   port_scan: "Port Scan",
