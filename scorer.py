@@ -69,8 +69,26 @@ def score_window(feature_dict: dict) -> dict:
         and class_confidence > CLASSIFIER_CONFIDENCE_THRESHOLD
     )
     anomaly_fired = anomaly_score > ANOMALY_SCORE_THRESHOLD
+    port_scan_fired = feature_dict.get("unique_dst_ports", 0) >= 20
 
-    if classifier_fired and anomaly_fired:
+    dst_ip = feature_dict.get("Dst_IP", "unknown_ip")
+    window_start_ts = feature_dict.get("Window_Start", "unknown_time")
+    
+    base_response = {
+        "flow_id": f"{dst_ip}-window-{window_start_ts}",
+        "timestamp": str(window_start_ts),
+        "src_ip": "aggregated_window",
+        "dst_ip": dst_ip,
+        "anomaly_score": round(anomaly_score, 3),
+        "classifier_probability": round(class_confidence, 3),
+    }
+
+    if port_scan_fired:
+        threat_class = "port_scan"
+        confidence = 1.0
+        severity = "high"
+        evidence = {"unique_dst_ports": feature_dict.get("unique_dst_ports", 0)}
+    elif classifier_fired and anomaly_fired:
         threat_class = predicted_class
         confidence = max(class_confidence, anomaly_score)
         severity = "critical"
@@ -86,21 +104,17 @@ def score_window(feature_dict: dict) -> dict:
         severity = "medium"
         evidence = top_zscore_features(feature_dict)
     else:
-        return {
-            "is_alert": False,
-            "anomaly_score": round(anomaly_score, 3),
-            "classifier_probability": round(class_confidence, 3),
-        }
+        base_response["is_alert"] = False
+        return base_response
 
-    return {
+    base_response.update({
         "is_alert": True,
         "threat_class": threat_class,
-        "confidence_score": round(confidence, 3),
+        "confidence": round(float(confidence), 3),
         "severity": severity,
-        "supporting_evidence": evidence,
-        "anomaly_score": round(anomaly_score, 3),
-        "classifier_probability": round(class_confidence, 3),
-    }
+        "evidence": evidence,
+    })
+    return base_response
 
 
 if __name__ == "__main__":

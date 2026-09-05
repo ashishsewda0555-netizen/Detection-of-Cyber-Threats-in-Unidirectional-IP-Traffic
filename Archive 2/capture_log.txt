@@ -1,0 +1,107 @@
+==============================================================
+  DDoS ML Pipeline — Capture Log
+  PURPOSE: Every PCAP captured for training must be logged here.
+           Never reverse-engineer labels from filenames again.
+==============================================================
+
+FORMAT (copy this block for each capture):
+---
+CAPTURE_ID     : [e.g., capture_003]
+DATE           : [YYYY-MM-DD]
+START_TIME     : [HH:MM:SS local time]
+STOP_TIME      : [HH:MM:SS local time]
+DURATION_SEC   : [seconds]
+ATTACKER_IP    : [or "randomized" if --rand-source was used]
+VICTIM_IP      : [exact IP used]
+INTERFACE      : [e.g., Ethernet 3 / Wi-Fi]
+ATTACK_TYPE    : [e.g., SYN_FLOOD / SPOOFED_SYN_FLOOD / BENIGN / PORT_SCAN]
+TOOL_USED      : [e.g., nping, hping3, Wireshark passive]
+COMMAND_USED   : [exact command string]
+OUTPUT_FILE    : [exact filename saved, e.g., spoofed_flood_01.pcap]
+LABEL_APPLIED  : [exact label string used in training CSV]
+NOTES          : [any anomalies, stops, restarts]
+---
+
+==============================================================
+  EXISTING CAPTURES (reverse-engineered — add details if known)
+==============================================================
+
+---
+CAPTURE_ID     : capture_001_to_022
+DATE           : [Unknown — reverse-engineered]
+START_TIME     : [Unknown]
+STOP_TIME      : [Unknown]
+DURATION_SEC   : [Unknown]
+ATTACKER_IP    : [Single attacker machine — no IP randomization]
+VICTIM_IP      : [Unknown — was 172.16.200.232 or similar]
+INTERFACE      : [Unknown]
+ATTACK_TYPE    : SYN_FLOOD (high volume, single source)
+TOOL_USED      : [Unknown]
+COMMAND_USED   : [Unknown — not logged at time of capture]
+OUTPUT_FILE    : [22 original attack PCAPs — filenames unknown]
+LABEL_APPLIED  : ddos_syn_flood / syn_flood_high_volume (various)
+NOTES          : Labels had to be reverse-engineered via heuristics.
+                 This is the process failure this log is designed to prevent.
+---
+
+==============================================================
+  NEW CAPTURES — TO BE COMPLETED (Phase 1)
+==============================================================
+
+---
+CAPTURE_ID     : capture_023_spoofed_flood
+DATE           : 2026-09-05
+START_TIME     : 02:19:58
+STOP_TIME      : 02:20:47
+DURATION_SEC   : 49
+ATTACKER_IP    : RANDOMIZED (--rand-source flag)
+VICTIM_IP      : 192.168.100.2
+INTERFACE      : Ethernet 3
+ATTACK_TYPE    : SPOOFED_SYN_FLOOD
+TOOL_USED      : hping3 (Linux/WSL/Kali) OR nping (Windows)
+COMMAND_USED   : sudo hping3 --rand-source -S -p 80 --flood 192.168.100.2
+OUTPUT_FILE    : spoofed_flood_01.pcap
+LABEL_APPLIED  : ddos_spoofed_syn_flood
+NOTES          : File was split into a 500,000 packet chunk from original massive capture.
+---
+
+---
+CAPTURE_ID     : capture_024_deep_benign
+DATE           : 2026-09-05
+START_TIME     : 02:18:34
+STOP_TIME      : 02:24:00
+DURATION_SEC   : 326
+ATTACKER_IP    : N/A (benign traffic capture)
+VICTIM_IP      : 192.168.100.2
+INTERFACE      : Ethernet 3
+ATTACK_TYPE    : BENIGN
+TOOL_USED      : Wireshark (passive capture, no filter)
+COMMAND_USED   : Wireshark passive capture on Ethernet 3
+OUTPUT_FILE    : benign_deep_01.pcap
+LABEL_APPLIED  : benign
+NOTES          : Browse web, stream video, download files during capture.
+                 Aim for diverse application traffic.
+                 Capture completed successfully.
+---
+
+==============================================================
+  PHASE 1 CAPTURE COMMANDS (exact commands to run)
+==============================================================
+
+OPTION A — hping3 Spoofed Flood (Linux / WSL / Kali on Attacker PC):
+  sudo hping3 --rand-source -S -p 80 --flood 192.168.100.2
+  Run for 2 minutes, then Ctrl+C.
+
+OPTION B — nping Spoofed Flood (Windows Nmap on Attacker PC):
+  NOTE: nping does NOT support --rand-source natively on Windows.
+  Use this workaround to simulate distributed source IPs:
+  FOR /L %i IN (1,1,20) DO nping --tcp -p 80 --flags syn --rate 500 -c 5000 --source-ip 10.0.%i.1 192.168.100.2
+  This cycles 20 different source IPs to create src_ip_entropy > 0.
+
+Benign Capture (Victim PC, Wireshark):
+  1. Open Wireshark as Administrator.
+  2. Select interface: Ethernet 3.
+  3. Start capture (no filter).
+  4. Browse Google, YouTube, download a file for 20 minutes.
+  5. Stop capture. Save as benign_deep_01.pcap in F:\ddos_ml_pipeline\
+==============================================================
