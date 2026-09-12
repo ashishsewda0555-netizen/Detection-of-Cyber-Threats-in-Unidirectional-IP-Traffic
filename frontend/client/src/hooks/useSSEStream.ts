@@ -20,6 +20,7 @@ export interface PipelineVerdict {
   timestamp: string;
   src_ip: string;
   dst_ip: string;
+  proto?: string;
   anomaly_score: number;
   classifier_probability: number;
   is_alert: boolean;
@@ -69,8 +70,10 @@ export interface HealthStatus {
 const THREAT_LABEL_MAP: Record<string, string> = {
   ddos_syn_flood: "SYN Flood DDoS",
   ddos_spoofed_syn_flood: "SYN Flood DDoS",
+  ddos_volumetric: "Volumetric DDoS",
   ddos_unknown_variant: "Unknown DDoS Variant",
   port_scan: "Port Scan",
+  exfiltration: "Data Exfiltration",
   benign: "Clean flow",
 };
 
@@ -97,9 +100,9 @@ function verdictToPacket(v: PipelineVerdict & { classification?: string }): Traf
   return {
     timestamp: v.timestamp ?? new Date().toISOString(),
     source_ip: v.src_ip ?? v.dst_ip ?? "unknown",
-    target_port: 80, // Pipeline operates on windowed features, not per-packet ports
-    packet_size: 0, // Not available from windowed features
-    protocol: "TCP", // Default — window-level data doesn't carry per-packet protocol
+    target_port: 0, // Zeek flows carry port in id.resp_p — not mapped here
+    packet_size: 0, // Not available from flow-level features
+    protocol: v.proto ?? "TCP",
     payload_entropy: v.anomaly_score ?? 0,
     threat_type: isAlert
       ? THREAT_LABEL_MAP[v.threat_class ?? ""] ?? v.threat_class ?? "Threat"

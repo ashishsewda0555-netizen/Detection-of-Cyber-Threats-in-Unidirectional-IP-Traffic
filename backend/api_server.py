@@ -1,18 +1,19 @@
 """
 api_server.py — In-Memory FastAPI Backend for DDoS Sentinel
 
-Replaces the legacy disk-bound pipeline (live_stream.csv → Streamlit polling)
-with a zero-disk-I/O, API-driven architecture:
+Zeek-based architecture: parses flow-level JSON logs (conn.log) instead of
+raw PCAPs. The ingestion layer (zeek_ingest.py) feeds flow features to
+this API for in-memory scoring.
 
-  live_capture.py  ──POST JSON──►  api_server.py  ──SSE push──►  React Frontend
-     (Scapy)                       (FastAPI)                     (EventSource)
+  zeek_ingest.py  ──POST JSON──►  api_server.py  ──SSE push──►  React Frontend
+     (Zeek)                       (FastAPI)                     (EventSource)
                                       │
                                       ▼
                                   scorer.py
                               (in-memory inference)
 
 Endpoints:
-  POST /api/score   — Receive a 5-second feature window, score it, push to SSE clients
+  POST /api/score   — Receive a Zeek flow feature dict, score it, push to SSE clients
   GET  /api/stream  — SSE stream of all scored verdicts (for React frontend)
   GET  /api/health  — Health check (confirms model is loaded)
 
@@ -40,7 +41,6 @@ load_dotenv()
 
 API_HOST = os.getenv("API_HOST", "0.0.0.0")
 API_PORT = int(os.getenv("API_PORT", "8000"))
-VICTIM_IP = os.getenv("VICTIM_IP", "192.168.100.2")
 
 # ──────────────────────────────────────────────
 # Logging
@@ -171,24 +171,25 @@ app.add_middleware(
 @app.post("/api/score")
 async def score_feature_window(request: Request) -> dict[str, Any]:
     """
-    Receives a 5-second feature window from live_capture.py as JSON,
-    scores it in-memory via scorer.score_window(), and broadcasts the
-    verdict to all connected SSE clients.
+    Receives a Zeek flow feature dict as JSON, scores it in-memory
+    via scorer.score_window(), and broadcasts the verdict to all
+    connected SSE clients.
 
     Expected JSON body (example):
     {
-        "flow_rate": 2.0,
-        "packet_rate": 2.0,
-        "fwd_bwd_ratio": 1.0,
-        "unique_src_count": 1,
-        "syn_flag_sum": 0,
-        "ack_flag_sum": 2,
-        "syn_ack_ratio": 0.0,
-        "avg_packet_size": 150.0,
-        "packet_size_std": 20.0,
-        "Dst_IP": "192.168.100.2",
-        "Window_Start": "2026-09-05T12:00:00+00:00",
-        "unique_dst_ports": 3
+        "id.orig_h": "10.0.1.50",
+        "id.resp_h": "192.168.1.1",
+        "id.orig_p": 54321,
+        "id.resp_p": 443,
+        "proto": "tcp",
+        "orig_bytes": 1200,
+        "resp_bytes": 8500,
+        "exfiltration_ratio": 0.141,
+        "syn_flag_count": 1,
+        "ack_flag_count": 2,
+        "syn_ack_ratio": 0.33,
+        "flow_rate": 5
+    }
     """
     from scorer import score_window
 
