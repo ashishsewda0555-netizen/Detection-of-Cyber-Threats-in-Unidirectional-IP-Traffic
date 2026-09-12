@@ -131,32 +131,35 @@ flowchart LR
     style Model_Training fill:#533483,color:#e0e0e0,stroke:#e94560
 ```
 
-### 3.2 Live Inference Pipeline (Real-Time, Zero Disk I/O)
+### 3.2 Live Inference Pipeline (Dual-Pipeline, Zero Disk I/O)
 
 ```mermaid
 flowchart LR
-    subgraph Sniffer["Packet Capture"]
-        A["live_capture.py\n(Scapy, 5-sec windows)"]
+    subgraph Ingestion["Dual-Pipeline Ingestion"]
+        direction TB
+        A["live_capture.py (Scapy)\nFast-Path: DDoS & Port Scan\n(BPF kernel filters, high-freq TCP metrics)"]
+        B["zeek_ingest.py (Zeek)\nFlow-Path: Exfiltration & C2\n(5-tuple metadata, byte metrics)"]
     end
 
     subgraph Backend["FastAPI Backend (port 8000)"]
-        B["POST /api/score"]
-        C["scorer.py\n(in-memory inference)"]
-        D["SSE Client Manager\n(asyncio.Queue fan-out)"]
-        B --> C
+        C["POST /api/score\n(Unified 13-feature matrix)"]
+        D["scorer.py\n(in-memory inference)"]
+        E["SSE Client Manager\n(asyncio.Queue fan-out)"]
         C --> D
+        D --> E
     end
 
     subgraph Frontend["React Frontend (port 3000/5173)"]
-        E["EventSource\n(GET /api/stream)"]
-        F["Dashboard UI\n(real-time alerts)"]
-        E --> F
+        F["EventSource\n(GET /api/stream)"]
+        G["Dashboard UI\n(real-time alerts)"]
+        F --> G
     end
 
-    A -->|POST JSON| B
-    D -->|SSE push| E
+    A -->|POST JSON| C
+    B -->|POST JSON| C
+    E -->|SSE push| F
 
-    style Sniffer fill:#1a1a2e,color:#e0e0e0,stroke:#0f3460
+    style Ingestion fill:#1a1a2e,color:#e0e0e0,stroke:#0f3460
     style Backend fill:#0f3460,color:#e0e0e0,stroke:#e94560
     style Frontend fill:#e94560,color:#ffffff,stroke:#533483
 ```
@@ -167,12 +170,13 @@ flowchart LR
 ### 3.3 Data Flow Summary
 
 ```
-live_capture.py  ──POST JSON──►  api_server.py  ──SSE push──►  React Frontend
-   (Scapy)                       (FastAPI)                     (EventSource)
-                                     │
-                                     ▼
-                                 scorer.py
-                             (in-memory inference)
+live_capture.py (Scapy) ──┐
+                          ├─► api_server.py ──SSE push──► React Frontend
+zeek_ingest.py (Zeek) ────┘     (FastAPI)
+                                    │
+                                    ▼
+                                scorer.py
+                            (unified inference)
 ```
 
 All configuration (IP, interface, port) is read from a centralized `.env` file — no hardcoded values in any Python script.
@@ -511,16 +515,24 @@ def score_window(feature_dict: dict) -> dict:
 **Output:** A structured alert dictionary:
 
 ```python
-# If attack detected:
+# If attack detected (Unified 13-feature schema mapping):
 {
+    "flow_id": "185.14.72.19-192.168.1.1-12345-80",
+    "timestamp": "2026-09-13T02:45:00Z",
+    "src_ip": "185.14.72.19",
+    "dst_ip": "192.168.1.1",
+    "proto": "tcp",
     "is_alert": True,
-    "threat_class": "syn_flood_classic",
-    "confidence_score": 0.943,
+    "threat_class": "ddos_syn_flood",
+    "confidence": 0.99,
     "severity": "critical",
-    "supporting_evidence": {
-        "syn_ack_ratio": 0.3821,       # SHAP contribution
-        "flow_rate": 0.1544,
-        "packet_rate": 0.0892
+    "evidence": {
+        "syn_ack_ratio": 350.0,
+        "flow_rate": 250,
+        "packet_rate": 1500,
+        "exfiltration_ratio": 0.0,
+        "orig_bytes": 60,
+        "resp_bytes": 0
     },
     "anomaly_score": 0.872,
     "classifier_probability": 0.943
@@ -1052,3 +1064,24 @@ The dual-engine + dual-explainability design should be prominently featured on t
 ---
 
 > **Summary:** This project demonstrates a production-grade approach to DDoS detection that goes beyond a simple classifier. The dual-engine architecture, explainable alerts, zero-day detection capability, deterministic heuristics (Phase 2), in-memory API-driven inference with SSE streaming (Phase 3), and capture-logging discipline make it a comprehensive cybersecurity ML system.
+
+---
+
+## 18. Domain Generation Algorithm (DGA) Detection
+
+To expand detection capabilities to include C2 beaconing and DGA activity, the system utilizes **Scalar Feature Extraction**. 
+Rather than passing raw domains through a memory-heavy CountVectorizer/TF-IDF (which scales poorly under high-throughput conditions and risks memory limits), we extract mathematically stable scalar metrics from the domain strings directly in the ingest layer:
+- **String Entropy**: Shannon entropy of the domain characters.
+- **Vowel-to-Consonant Ratio**: DGA strings exhibit highly unnatural phonetics.
+- **Hex/Digit Density**: Proportion of numerical/hex characters.
+- **N-Gram Transition Probabilities**: Using a pre-computed Markov probability matrix to measure pronunciation likelihood.
+
+These scalars are appended to the Zeek flow-path, keeping the memory footprint strictly bounded while maintaining high detection accuracy.
+
+---
+
+## 19. Future Scope & Scalability
+
+### JA4 Behavioral Consistency Modeling
+In the next scalability phase, we will implement **JA4+ Fingerprinting**. 
+While Scapy provides high-frequency rate metrics and Zeek provides deep flow insights, incorporating JA4/JA4S hashes will allow us to track behavioral consistency across sessions. By fingerprinting the TLS/TCP handshake parameters of known attack tools, we can proactively block C2 exfiltration streams and polymorphic DDoS botnets regardless of spoofed source IPs or rapidly rotating domain names. This will integrate directly into the Zeek ingestion flow-path without impacting the Scapy fast-path.

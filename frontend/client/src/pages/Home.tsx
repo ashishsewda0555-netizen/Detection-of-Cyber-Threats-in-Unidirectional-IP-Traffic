@@ -45,14 +45,22 @@ function EvidenceGrid({ evidence }: { evidence?: Record<string, number> }) {
       <div style={{ gridColumn: "1 / -1" }}>
         <span className="section-kicker">SHAP FEATURE CONTRIBUTIONS</span>
       </div>
-      {Object.entries(evidence).map(([feature, value]) => (
-        <div key={feature}>
-          <span>{feature.replace(/_/g, " ").toUpperCase()}</span>
-          <strong style={{ color: value > 0 ? "#ff6b61" : "#c7f36b" }}>
-            {value > 0 ? "+" : ""}{typeof value === "number" ? value.toFixed(4) : value}
-          </strong>
-        </div>
-      ))}
+      {Object.entries(evidence).map(([feature, value]) => {
+        const isZeek = ["orig_bytes", "resp_bytes", "exfiltration_ratio"].includes(feature);
+        const sourceTag = isZeek ? "[ZEEK FLOW-PATH]" : "[SCAPY FAST-PATH]";
+        return (
+          <div key={feature}>
+            <span>
+              {feature.replace(/_/g, " ").toUpperCase()}
+              <br/>
+              <small style={{ color: "#6c7a70", fontSize: "0.75em" }}>{sourceTag}</small>
+            </span>
+            <strong style={{ color: value > 0 ? "#ff6b61" : "#c7f36b", alignSelf: "center" }}>
+              {value > 0 ? "+" : ""}{typeof value === "number" ? value.toFixed(4) : value}
+            </strong>
+          </div>
+        );
+      })}
     </div>
   );
 }

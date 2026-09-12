@@ -177,18 +177,26 @@ async def score_feature_window(request: Request) -> dict[str, Any]:
 
     Expected JSON body (example):
     {
-        "flow_rate": 2.0,
-        "packet_rate": 2.0,
-        "fwd_bwd_ratio": 1.0,
+        "id.orig_h": "10.0.1.50",
+        "id.resp_h": "192.168.1.1",
+        "id.orig_p": 54321,
+        "id.resp_p": 443,
+        "proto": "tcp",
+        "flow_rate": 5,
+        "packet_rate": 20,
+        "fwd_bwd_ratio": 1.2,
         "unique_src_count": 1,
-        "syn_flag_sum": 0,
-        "ack_flag_sum": 2,
-        "syn_ack_ratio": 0.0,
-        "avg_packet_size": 150.0,
-        "packet_size_std": 20.0,
-        "Dst_IP": "192.168.100.2",
-        "Window_Start": "2026-09-05T12:00:00+00:00",
-        "unique_dst_ports": 3
+        "src_ip_entropy": 0.0,
+        "syn_flag_sum": 2,
+        "ack_flag_sum": 3,
+        "syn_ack_ratio": 0.66,
+        "avg_packet_size": 1500,
+        "packet_size_std": 20.5,
+        "unique_dst_ports": 1,
+        "orig_bytes": 1200,
+        "resp_bytes": 8500,
+        "exfiltration_ratio": 0.141
+    }
     """
     from scorer import score_window
 
